@@ -102,8 +102,9 @@ namespace Macrocosm.Content.Rockets.Storage
 		{
 			int rocketId = reader.ReadByte();
 			Rocket owner = RocketManager.Rockets[rocketId];
-			  Inventory inventory = owner.Inventory;
+			Inventory inventory = owner.Inventory;
 
+			// FIXME: inventory is sometimes already null ?!?!
 			int oldSize = inventory.Size;
 			int newSize = reader.ReadUInt16();
 
