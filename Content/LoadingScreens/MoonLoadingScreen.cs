@@ -6,7 +6,6 @@ using Microsoft.Xna.Framework.Graphics;
 using ReLogic.Content;
 using System;
 using Terraria;
-using Terraria.Localization;
 using Terraria.ModLoader;
 
 namespace Macrocosm.Content.LoadingScreens
@@ -30,6 +29,9 @@ namespace Macrocosm.Content.LoadingScreens
         private readonly float animationDuration = 1000f;
         protected override void UpdateAnimation()
         {
+            if (!Moving && animationTimer > 5)
+                return;
+
             if (animationTimer < animationDuration)
                 animationTimer += 1f;
         }

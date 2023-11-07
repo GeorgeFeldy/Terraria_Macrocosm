@@ -5,7 +5,7 @@ using Terraria.ModLoader;
 
 namespace Macrocosm.Common.Commands
 {
-	public class ClearSubworldCommand : ModCommand
+    public class ClearSubworldCommand : ModCommand
     {
         public override string Command => "clrd";
 
@@ -15,10 +15,10 @@ namespace Macrocosm.Common.Commands
         {
             #if !DEBUG
                 Main.NewText("You must be in debug mode to use this!");
-				return;
+                return;
             #endif
 
-			if (args.Length == 0)
+            if (args.Length == 0)
             {
                 Main.NewText("Please type in the subworld name to clear data.", Color.Red);
                 return;

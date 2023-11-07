@@ -7,7 +7,9 @@ using Macrocosm.Content.Rockets;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ReLogic.Content;
+using SubworldLibrary;
 using System.Linq;
+using System.Reflection;
 using Terraria;
 using Terraria.GameContent;
 using Terraria.ModLoader;
@@ -36,7 +38,8 @@ namespace Macrocosm.Content.LoadingScreens
         protected Stars stars = new();
         protected Stars fallingStars = new();
 
-        private Rocket rocket;
+        protected bool Moving => rocket is not null;
+        protected Rocket rocket;
 
         private UIWorldGenProgressBar progressBar;
 
@@ -101,11 +104,21 @@ namespace Macrocosm.Content.LoadingScreens
 
             UpdateAnimation();
             Update();
+
+            if (Main.gameMenu && Main.menuMode == 0)
+            {
+                var flags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
+                FieldInfo field = typeof(SubworldSystem).GetField("cache", flags);
+                field.SetValue(null, null);
+            }
         }
 
         /// <summary> Update the animation counter. Override for non-default behaviour </summary>
         protected virtual void UpdateAnimation()
         {
+            if (!Moving && animationTimer > 5)
+                return;
+
             if (animationTimer <= 5)
                 animationTimer += 0.125f;
         }
@@ -123,15 +136,20 @@ namespace Macrocosm.Content.LoadingScreens
         {
             InternalUpdate();
 
-            stars.MovementVector = new(0f, 0.25f);
+            if (Moving)
+            {
+                stars.MovementVector = new(0f, 0.25f);
+            }
+
             stars.Draw(spriteBatch);
 
             PreDraw(spriteBatch);
 
-            if (rocket is not null)
+            if (Moving)
+            {
                 DrawRocket(spriteBatch);
-
-            fallingStars.Draw(spriteBatch);
+                fallingStars.Draw(spriteBatch);
+            }
 
             if (WorldGenerator.CurrentGenerationProgress is not null)
             {
