@@ -1,9 +1,15 @@
-﻿using Macrocosm.Content.Subworlds;
+﻿using Macrocosm.Content.Players;
+using Macrocosm.Content.Subworlds;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using SubworldLibrary;
+using System.Collections.Generic;
 using Terraria;
 using Terraria.DataStructures;
 using Terraria.GameContent.Creative;
 using Terraria.GameContent.Events;
+using Terraria.GameContent.UI.Elements;
+using Terraria.Localization;
 using Terraria.ModLoader;
 
 namespace Macrocosm.Common.Subworlds
@@ -18,6 +24,18 @@ namespace Macrocosm.Common.Subworlds
 
         public static int Seed => Main.ActiveWorldFileData.Seed;
         public static string SeedText => Main.ActiveWorldFileData.SeedText;
+
+        public Dictionary<string, string> LastSubworldsByWorld = new();
+
+        public override void Load()
+        {
+            On_UIWorldListItem.DrawSelf += DrawWorldListPlanetIcons;
+        }
+
+        public override void Unload()
+        {
+            On_UIWorldListItem.DrawSelf -= DrawWorldListPlanetIcons;
+        }
 
         public override void OnWorldLoad()
         {
@@ -138,6 +156,30 @@ namespace Macrocosm.Common.Subworlds
 
             LanternNight.WorldClear();
             Main.StopRain(); // Rain, rain, go away, come again another day
+        }
+
+        private void DrawWorldListPlanetIcons(On_UIWorldListItem.orig_DrawSelf orig, UIWorldListItem uIItem, SpriteBatch spriteBatch)
+        {
+            orig(uIItem, spriteBatch);
+
+            var player = Main.LocalPlayer.GetModPlayer<MacrocosmPlayer>();
+            string subworldId = "Earth";
+            Texture2D texture = Macrocosm.EmptyTex;
+
+            if (player.TryGetReturnSubworld(uIItem.Data.UniqueId, out string id))
+                subworldId = id;
+ 
+            if (ModContent.RequestIfExists<Texture2D>(Macrocosm.TextureAssetsPath + "Icons/" + subworldId, out var asset))
+                texture = asset.Value;
+
+            var dims = uIItem.GetOuterDimensions();
+            var pos = new Vector2(dims.X + texture.Width + 102, dims.Y + dims.Height - texture.Height + 1);
+
+            Rectangle bounds = new((int)pos.X, (int)pos.Y, texture.Width, texture.Height);
+            spriteBatch.Draw(texture, pos, null, Color.White, 0f, Vector2.Zero, 0.8f, SpriteEffects.None, 0f);
+
+            if (bounds.Contains(Main.mouseX, Main.mouseY))
+                Main.instance.MouseText(Language.GetTextValue("Mods.Macrocosm.Subworlds." + subworldId + ".DisplayName"));
         }
 
         public override void PreUpdateEntities()

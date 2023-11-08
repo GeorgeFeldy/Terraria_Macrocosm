@@ -1,4 +1,5 @@
 ﻿using Macrocosm.Common.Systems;
+using Macrocosm.Common.Utils;
 using Macrocosm.Content.Players;
 using Macrocosm.Content.Rockets;
 using Macrocosm.Content.Rockets.Customization;
@@ -7,9 +8,12 @@ using Macrocosm.Content.Rockets.Navigation.Checklist;
 using Macrocosm.Content.Subworlds;
 using Microsoft.Xna.Framework;
 using SubworldLibrary;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using Terraria;
 using Terraria.ID;
+using Terraria.IO;
 using Terraria.ModLoader.IO;
 
 namespace Macrocosm.Common.Subworlds
@@ -44,10 +48,6 @@ namespace Macrocosm.Common.Subworlds
         /// <summary> The height is determined in ReadCopiedMainWorldData using GetWorldSize </summary>
         public sealed override int Height => GetWorldSize(Earth.WorldSize).Height;
 
-
-        /// <summary> Modifiy color of the skies (applied to background, tiles, etc.) </summary>
-        public virtual void ModifyColorOfTheSkies(ref Color colorOfTheSkies) { }
-
         /// <summary> Specifies the conditions for reaching this particular subworld </summary>
         public virtual ChecklistConditionCollection LaunchConditions { get; } = new();
 
@@ -60,30 +60,34 @@ namespace Macrocosm.Common.Subworlds
         /// <summary> The map background color for each depth layer (Surface, Underground, Cavern, Underworld) </summary>
         public virtual Dictionary<MapColorType, Color> MapColors { get; } = null;
 
+        /// <summary> 
+        /// Determines what <see cref="SubworldSystem.Exit"/> will do. 
+        /// <br> If travelling using conventional methods, where <see cref="MacrocosmPlayer.TriggeredSubworldTravel"/> is set, will return to the main world (Earth). </br>
+        /// <br> Otherwise, return to the main menu. This is used when clicking "Return" from the in-game settings menu, while in a subworld. </br>
+        /// </summary>
         public override int ReturnDestination
         {
             get
             {
-                // If travelling using conventional methods, return to Earth
-                if (Main.LocalPlayer.GetModPlayer<SubworldPlayer>().UsedTravelItem ||
-                    Main.LocalPlayer.GetModPlayer<RocketPlayer>().InRocket)
+                // Return to the main world (Earth)
+                if (Main.LocalPlayer.GetModPlayer<MacrocosmPlayer>().TriggeredSubworldTravel)
                     return base.ReturnDestination;
-                // If clicking "Return" from the settings menu, go to main menu instead
+                // Go to main menu
                 else
                     return int.MinValue;
             }
         }
 
+        public Guid MainWorldUniqueId { get; private set; }
+
         public override void OnEnter()
         {
             OnEnterWorld();
-            LoadingScreen?.Setup();
         }
 
         public override void OnExit()
         {
             OnExitWorld();
-            LoadingScreen?.Setup();
         }
 
         public override void DrawMenu(GameTime gameTime)
@@ -104,6 +108,11 @@ namespace Macrocosm.Common.Subworlds
                 return base.GetGravity(entity);
 
             return base.GetGravity(entity);
+        }
+
+        public override void OnLoad()
+        {
+            MainWorldUniqueId = (Utility.GetFieldValue(typeof(SubworldSystem), "main") as WorldFileData).UniqueId;
         }
 
         private static void SaveData(TagCompound tag)
@@ -243,8 +252,7 @@ namespace Macrocosm.Common.Subworlds
         /// <summary> Called after Invasions get updated. Not called for multiplayer clients. </summary>
         public virtual void PostUpdateInvasions() { }
 
-        /// <summary> Called after the Network got updated, this is the last hook that happens in a subworld update.
-        /// </summary>
+        /// <summary> Called after the Network got updated, this is the last hook that happens in a subworld update. </summary>
         public virtual void PostUpdateEverything() { }
     }
 }

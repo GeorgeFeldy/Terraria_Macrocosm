@@ -118,7 +118,7 @@ namespace Macrocosm.Common.Utils
             => 0.299f * rgbColor.R / 255 + 0.587f * rgbColor.G / 255 + 0.114f * rgbColor.B / 255;
 
         /// <summary> Returns the RGB grayscale of a color using the NTSC standard </summary>
-        public static Color ToGrayscaleNTSC(this Color rgbColor)
+        public static Color ToGrayscale(this Color rgbColor)
         {
             Color result = new();
             result.R = result.G = result.B = (byte)(rgbColor.GetLuminanceNTSC() * 255);

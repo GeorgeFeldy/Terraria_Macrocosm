@@ -35,7 +35,7 @@ namespace Macrocosm.Content.Backgrounds.Moon
                 float bgScale = 2.5f;
                 int bgW = (int)(Main.backgroundWidth[textureSlot] * bgScale);
 
-                SkyManager.Instance.DrawToDepth(Main.spriteBatch, 1f / bgParallax);
+                //SkyManager.Instance.DrawToDepth(Main.spriteBatch, 1f / bgParallax);
 
                 float screenOff = typeof(Main).GetFieldValue<float>("screenOff", Main.instance);
                 float scAdj = typeof(Main).GetFieldValue<float>("scAdj", Main.instance);
@@ -47,7 +47,7 @@ namespace Macrocosm.Content.Backgrounds.Moon
                     bgTop = 320;
                 }
 
-                Color backColor = typeof(Main).GetFieldValue<Color>("ColorOfSurfaceBackgroundsBase", Main.instance);
+                Color backColor = typeof(Main).GetFieldValue<Color>("ColorOfSurfaceBackgroundsBase", Main.instance).ToGrayscale();
                 int bgLoops = Main.screenWidth / bgW + 2;
 
                 if (Main.screenPosition.Y < Main.worldSurface * 16.0 + 16.0)

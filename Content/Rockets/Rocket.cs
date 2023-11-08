@@ -272,7 +272,7 @@ namespace Macrocosm.Content.Rockets
                 Velocity = Vector2.Zero;
                 ResetAnimation();
                 Launched = false;
-                Landing = true;
+                Landing = true;             
                 Travel();
             }
         }
@@ -793,8 +793,7 @@ namespace Macrocosm.Content.Rockets
                 if (Main.netMode == NetmodeID.Server)
                     return;
 
-                RocketPlayer myRocketPlayer = GetRocketPlayer(Main.myPlayer);
-                if (myRocketPlayer.InRocket && myRocketPlayer.RocketID == WhoAmI)
+                if (CheckPlayerInRocket(Main.myPlayer))
                 {
                     if (!MacrocosmSubworld.Travel(TargetWorld, this))
                     {

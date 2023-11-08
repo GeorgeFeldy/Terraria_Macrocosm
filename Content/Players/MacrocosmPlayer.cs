@@ -1,10 +1,17 @@
-﻿using Macrocosm.Common.Systems;
+﻿using Macrocosm.Common.Config;
+using Macrocosm.Common.Subworlds;
+using Macrocosm.Common.Systems;
 using Macrocosm.Common.Utils;
 using Macrocosm.Content.Biomes;
 using Macrocosm.Content.Buffs.Debuffs;
+using Macrocosm.Content.LoadingScreens;
 using Macrocosm.Content.Subworlds;
 using Microsoft.Xna.Framework;
 using SubworldLibrary;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
 using Terraria;
 using Terraria.Graphics.Effects;
 using Terraria.Localization;
@@ -23,39 +30,45 @@ namespace Macrocosm.Content.Players
     }
 
     /// <summary>
-    /// The default class for storing custom player data. 
-    /// If your custom player data has more members than one field or field+property, 
-    /// or some other complex update logic, use a separate ModPlayer class.
+    /// Miscenllaneous class for storing custom player data. 
+    /// Complex, very specific systems should be implemented in a separate ModPlayer.
     /// </summary>
     public class MacrocosmPlayer : ModPlayer
     {
+        /// <summary>
+        /// Whether the player has subworld travel activated (used item, in rocket etc.)
+        /// If this is false, SubworldSystem.Exit() will return to the main menu.
+        /// Not synced.
+        /// </summary>
+        public bool TriggeredSubworldTravel { get; set; }
+
         /// <summary> 
         /// The player's space protection level.
-        /// Handled locally.
+        /// Not synced.
         /// </summary>
         public SpaceProtection SpaceProtection { get; set; } = SpaceProtection.None;
 
         /// <summary> 
         /// The radiation effect intensity for this player. 
-        /// Handled locally. 
+        /// Not synced.
         /// </summary>
         public float RadNoiseIntensity = 0f;
 
         /// <summary> 
         /// Chandrium whip hit stacks. 
-        /// Handled locally.
+        /// Not synced.
         /// </summary>
         public int ChandriumWhipStacks = 0;
 
         /// <summary> 
         /// Whether this player is aware that they can use zombie fingers to unlock chests.
-        /// Handled locally.
+        /// Persistent. Not synced.
         /// </summary>
         public bool KnowsToUseZombieFinger = false;
 
         /// <summary> 
         /// Chance to not consume ammo from equipment and weapons, stacks additively with the vanilla chance 
-        /// Handled locally.
+        /// Not synced.
         /// </summary>
         public float ChanceToNotConsumeAmmo
         {
@@ -65,12 +78,53 @@ namespace Macrocosm.Content.Players
 
         private float chanceToNotConsumeAmmo = 0f;
 
+        /// <summary>
+        /// The subworlds this player has visited.
+        /// Persistent. Not synced.
+        /// </summary>
+        //TODO: sync this if needed
+        private List<string> visitedSubworlds = new();
+
+        /// <summary>
+        /// A dictionary of this player's last known subworld, by each Terraria world file visited.
+        /// Not synced.
+        /// </summary>
+        private readonly Dictionary<Guid, string> lastSubworldNameByWorldUniqueId = new();
+
         public override void ResetEffects()
         {
             SpaceProtection = SpaceProtection.None;
             RadNoiseIntensity = 0f;
             ChanceToNotConsumeAmmo = 0f;
             Player.buffImmune[BuffType<Depressurized>()] = false;
+            TriggeredSubworldTravel = false;
+        }
+
+        public bool HasVisitedSubworld(string subworldId) => visitedSubworlds.Contains(subworldId);
+
+        public void SetReturnSubworld(string subworldId)
+        {
+            Guid guid = SubworldSystem.AnyActive<Macrocosm>() ? MacrocosmSubworld.Current.MainWorldUniqueId : Main.ActiveWorldFileData.UniqueId;
+            lastSubworldNameByWorldUniqueId[guid] = subworldId;
+        }
+
+        public bool TryGetReturnSubworld(Guid worldUniqueId, out string subworldId) => lastSubworldNameByWorldUniqueId.TryGetValue(worldUniqueId, out subworldId);
+
+        public override void OnEnterWorld()
+        {
+            if (lastSubworldNameByWorldUniqueId.TryGetValue(Main.ActiveWorldFileData.UniqueId, out string lastSubworldId))
+                 if (!SubworldSystem.AnyActive<Macrocosm>() && lastSubworldId is not "Earth")
+                     MacrocosmSubworld.Travel(lastSubworldId, trigger: false);
+ 
+            if (SubworldSystem.AnyActive<Macrocosm>())
+            {
+                LoadingTitleSequence.StartSequence(noTitle: HasVisitedSubworld(MacrocosmSubworld.CurrentMacrocosmID) && !MacrocosmConfig.Instance.AlwaysDisplayTitleScreens);
+                visitedSubworlds.Add(MacrocosmSubworld.CurrentMacrocosmID);
+            }
+            else if (TriggeredSubworldTravel)
+            {                
+                LoadingTitleSequence.StartSequence(noTitle: !MacrocosmConfig.Instance.AlwaysDisplayTitleScreens);
+            }
         }
 
         public override bool CanConsumeAmmo(Item weapon, Item ammo)
@@ -136,6 +190,9 @@ namespace Macrocosm.Content.Players
 
         private void UpdateFilterEffects()
         {
+            if (Main.dedServ)
+                return;
+
             if (Player.InModBiome<IrradiationBiome>())
             {
                 if (!Filters.Scene["Macrocosm:RadiationNoise"].IsActive())
@@ -156,11 +213,30 @@ namespace Macrocosm.Content.Players
         {
             if (KnowsToUseZombieFinger)
                 tag[nameof(KnowsToUseZombieFinger)] = true;
+
+            if(visitedSubworlds.Any())
+                tag[nameof(visitedSubworlds)] = visitedSubworlds;
+
+            TagCompound lastSubworldsByWorld = new();
+            foreach (var kvp in lastSubworldNameByWorldUniqueId)
+                lastSubworldsByWorld[kvp.Key.ToString()] = kvp.Value;
+
+            tag[nameof(lastSubworldNameByWorldUniqueId)] = lastSubworldsByWorld;
         }
 
         public override void LoadData(TagCompound tag)
         {
             KnowsToUseZombieFinger = tag.ContainsKey(nameof(KnowsToUseZombieFinger));
+
+            if (tag.ContainsKey(nameof(visitedSubworlds)))
+                visitedSubworlds = tag.GetList<string>(nameof(visitedSubworlds)).ToList();
+
+            if (tag.ContainsKey(nameof(lastSubworldNameByWorldUniqueId)))
+            {
+                TagCompound lastSubworldsByWorld = tag.GetCompound(nameof(lastSubworldNameByWorldUniqueId));
+                foreach (var kvp in lastSubworldsByWorld)
+                    lastSubworldNameByWorldUniqueId[new Guid(kvp.Key)] = lastSubworldsByWorld.GetString(kvp.Key);
+            }
         }
     }
 }

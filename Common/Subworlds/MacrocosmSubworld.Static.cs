@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using SubworldLibrary;
 using Terraria;
 using Terraria.ID;
+using Terraria.IO;
 
 namespace Macrocosm.Common.Subworlds
 {
@@ -56,28 +57,19 @@ namespace Macrocosm.Common.Subworlds
         /// <summary> The loading screen. </summary>
         public static LoadingScreen LoadingScreen { get; set; }
 
-        public static bool Travel(string targetWorld, Rocket rocket = null)
+        public static bool Travel(string targetWorld, Rocket rocket = null, bool trigger = true)
         {
             if (Main.netMode != NetmodeID.Server)
             {
-                if (!SubworldSystem.AnyActive<Macrocosm>())
-                {
-                    LoadingScreen = new EarthLoadingScreen();
-                }
-                else switch (Current.Name)
-                    {
-                        case "Moon": LoadingScreen = new MoonLoadingScreen(); break;
-                    }
+                UpdateLoadingScreen(rocket, targetWorld);
 
-                if (rocket is not null)
-                    LoadingScreen.SetRocket(rocket);
-
-                Main.LocalPlayer.GetModPlayer<SubworldPlayer>().RegisterTravel(targetWorld);
+                Main.LocalPlayer.GetModPlayer<MacrocosmPlayer>().TriggeredSubworldTravel = trigger;
+                Main.LocalPlayer.GetModPlayer<MacrocosmPlayer>().SetReturnSubworld(targetWorld);
 
                 if (targetWorld == "Earth")
                 {
                     SubworldSystem.Exit();
-                    LoadingScreen.SetTargetWorld("Earth");
+                    LoadingScreen?.SetTargetWorld("Earth");
                     LoadingTitleSequence.SetTargetWorld("Earth");
                     return true;
                 }
@@ -87,7 +79,7 @@ namespace Macrocosm.Common.Subworlds
 
                 if (entered)
                 {
-                    LoadingScreen.SetTargetWorld(targetWorld);
+                    LoadingScreen?.SetTargetWorld(targetWorld);
                     LoadingTitleSequence.SetTargetWorld(targetWorld);
                 }
                 else
@@ -101,6 +93,36 @@ namespace Macrocosm.Common.Subworlds
             {
                 return true;
             }
+        }
+
+        private static void UpdateLoadingScreen(Rocket rocket, string targetWorld)
+        {
+            bool flightAnimation = rocket is not null;
+
+            if(flightAnimation)
+            {
+                if (!SubworldSystem.AnyActive<Macrocosm>())
+                     LoadingScreen = new EarthLoadingScreen();
+                else LoadingScreen = CurrentMacrocosmID switch
+                {
+                    "Moon" => new MoonLoadingScreen(),
+                    _ => null,
+                };
+            }
+            else
+            {
+                LoadingScreen = targetWorld switch
+                {
+                    "Earth" => new EarthLoadingScreen(),
+                    "Moon" => new MoonLoadingScreen(),
+                    _ => null,
+                };
+            }
+
+            if (flightAnimation)
+                LoadingScreen?.SetRocket(rocket);
+
+            LoadingScreen?.Setup();
         }
 
         // Called if travel to the target subworld fails

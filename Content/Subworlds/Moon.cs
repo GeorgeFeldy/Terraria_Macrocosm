@@ -90,11 +90,6 @@ namespace Macrocosm.Content.Subworlds
                 SkyManager.Instance.Activate("Macrocosm:MoonSky");
         }
 
-        public override void ModifyColorOfTheSkies(ref Color colorOfTheSkies)
-        {
-            colorOfTheSkies = colorOfTheSkies.ToGrayscaleNTSC();
-        }
-
         //TODO: NetSync and add actual content
         private void UpdateBloodMoon()
         {

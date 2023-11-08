@@ -30,8 +30,6 @@ namespace Macrocosm.Content.Items.Dev
         {
             if (player.whoAmI == Main.myPlayer)
             {
-                player.GetModPlayer<SubworldPlayer>().UsedTravelItem = true;
-
                 if (!SubworldSystem.AnyActive<Macrocosm>())
                     MacrocosmSubworld.Travel("Moon");
                 else
