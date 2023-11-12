@@ -5,9 +5,11 @@ using Macrocosm.Content.Rockets;
 using Macrocosm.Content.Subworlds;
 using Microsoft.Xna.Framework;
 using SubworldLibrary;
+using System.Reflection;
 using Terraria;
 using Terraria.ID;
 using Terraria.IO;
+using Terraria.ModLoader.IO;
 
 namespace Macrocosm.Common.Subworlds
 {
@@ -50,13 +52,18 @@ namespace Macrocosm.Common.Subworlds
 
         // TODO: We could protect the original properties get them only via statics?
         public static double CurrentTimeRate => SubworldSystem.AnyActive<Macrocosm>() ? Current.TimeRate : Earth.TimeRate;
-        public static double CurrentDayLenght => SubworldSystem.AnyActive<Macrocosm>() ? Current.DayLenght : Earth.DayLenght;
-        public static double CurrentNightLenght => SubworldSystem.AnyActive<Macrocosm>() ? Current.NightLenght : Earth.NightLenght;
+        public static double CurrentDayLength => SubworldSystem.AnyActive<Macrocosm>() ? Current.DayLenght : Earth.DayLenght;
+        public static double CurrentNightLength => SubworldSystem.AnyActive<Macrocosm>() ? Current.NightLenght : Earth.NightLenght;
         public static float CurrentGravityMultiplier => SubworldSystem.AnyActive<Macrocosm>() ? Current.GravityMultiplier : Earth.GravityMultiplier;
 
         /// <summary> The loading screen. </summary>
         public static LoadingScreen LoadingScreen { get; set; }
 
+        /// <summary> Travel to the specified subworld, using the specified rocket. </summary>
+        /// <param name="targetWorld"> The world to travel to, "Earth" for returning to the main world. </param>
+        /// <param name="rocket"> The spacecraft used for travel, if applicable. Will display in the loading screen. </param>
+        /// <param name="trigger"> Value set to the <see cref="MacrocosmPlayer.TriggeredSubworldTravel"/>. Normally true. </param>
+        /// <returns> Whether world travel has been successful </returns>
         public static bool Travel(string targetWorld, Rocket rocket = null, bool trigger = true)
         {
             if (Main.netMode != NetmodeID.Server)
@@ -99,7 +106,7 @@ namespace Macrocosm.Common.Subworlds
         {
             bool flightAnimation = rocket is not null;
 
-            if(flightAnimation)
+            if(rocket is not null)
             {
                 if (!SubworldSystem.AnyActive<Macrocosm>())
                      LoadingScreen = new EarthLoadingScreen();
@@ -119,8 +126,11 @@ namespace Macrocosm.Common.Subworlds
                 };
             }
 
-            if (flightAnimation)
+            if (rocket is not null)
                 LoadingScreen?.SetRocket(rocket);
+            else
+                LoadingScreen?.ClearRocket();
+
 
             LoadingScreen?.Setup();
         }
@@ -130,6 +140,30 @@ namespace Macrocosm.Common.Subworlds
         {
             Utility.Chat(message, Color.Red);
             Macrocosm.Instance.Logger.Error(message);
+        }
+
+        public class Hacks 
+        {
+            /// <summary>
+            /// Remove this once SubworldLibrary <see href="https://github.com/jjohnsnaill/SubworldLibrary/pull/35"/> is merged.
+            /// </summary>
+            public static void SubworldSystem_NullCache()
+            {
+                FieldInfo field = typeof(SubworldSystem).GetField("cache", BindingFlags.Static | BindingFlags.NonPublic);
+                field.SetValue(null, null);
+            }
+
+            /// <summary> 
+            /// Bypasses SubworldLibrary tag key existence check. 
+            /// TODO: Replace with <see cref="SubworldSystem.CopyWorldData(string, object)"/> on next SubworldLibrary update.
+            /// </summary>
+            public static void SubworldSystem_CopyWorldData(string key, object data)
+            {
+                var copiedData = Utility.GetFieldValue<TagCompound>(typeof(SubworldSystem), "copiedData", flags: BindingFlags.Static | BindingFlags.NonPublic);
+
+                if (data != null)
+                     copiedData[key] = data;
+            }            
         }
     }
 }

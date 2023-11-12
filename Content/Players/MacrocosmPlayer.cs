@@ -30,15 +30,18 @@ namespace Macrocosm.Content.Players
     }
 
     /// <summary>
-    /// Miscenllaneous class for storing custom player data. 
+    /// Miscellaneous class for storing custom player data. 
     /// Complex, very specific systems should be implemented in a separate ModPlayer.
     /// </summary>
     public class MacrocosmPlayer : ModPlayer
     {
         /// <summary>
-        /// Whether the player has subworld travel activated (used item, in rocket etc.)
-        /// If this is false, SubworldSystem.Exit() will return to the main menu.
-        /// Not synced.
+        /// Whether the player has voluntarily initiated subworld travel. Not synced. 
+        /// <br> Value can be set in <see cref="MacrocosmSubworld.Travel"/>via the <c>trigger</c> parameter</br>
+        /// <br> If true, the title sequence will display, and SubworldSystem.Exit() will move the player to Earth.</br> 
+        /// <br> (Player took a Rocket, or used Teleporter)</br>
+        /// <br> If false, the title sequence will display, and SubworldSystem.Exit() will return to the main menu. </br>
+        /// <br> (Player clicks the "Return" button from the in-game options menu, or is forced to a subworld on world enter) </br>
         /// </summary>
         public bool TriggeredSubworldTravel { get; set; }
 
@@ -86,7 +89,7 @@ namespace Macrocosm.Content.Players
         private List<string> visitedSubworlds = new();
 
         /// <summary>
-        /// A dictionary of this player's last known subworld, by each Terraria world file visited.
+        /// A dictionary of this player's last known subworld, by each Terraria main world file visited.
         /// Not synced.
         /// </summary>
         private readonly Dictionary<Guid, string> lastSubworldNameByWorldUniqueId = new();
@@ -112,19 +115,24 @@ namespace Macrocosm.Content.Players
 
         public override void OnEnterWorld()
         {
-            if (lastSubworldNameByWorldUniqueId.TryGetValue(Main.ActiveWorldFileData.UniqueId, out string lastSubworldId))
-                 if (!SubworldSystem.AnyActive<Macrocosm>() && lastSubworldId is not "Earth")
-                     MacrocosmSubworld.Travel(lastSubworldId, trigger: false);
- 
-            if (SubworldSystem.AnyActive<Macrocosm>())
+            if (!SubworldSystem.AnyActive<Macrocosm>())
             {
-                LoadingTitleSequence.StartSequence(noTitle: HasVisitedSubworld(MacrocosmSubworld.CurrentMacrocosmID) && !MacrocosmConfig.Instance.AlwaysDisplayTitleScreens);
-                visitedSubworlds.Add(MacrocosmSubworld.CurrentMacrocosmID);
+                if (lastSubworldNameByWorldUniqueId.TryGetValue(Main.ActiveWorldFileData.UniqueId, out string lastSubworldId) && lastSubworldId is not "Earth")
+                    MacrocosmSubworld.Travel(lastSubworldId, trigger: false);
             }
-            else if (TriggeredSubworldTravel)
-            {                
-                LoadingTitleSequence.StartSequence(noTitle: !MacrocosmConfig.Instance.AlwaysDisplayTitleScreens);
-            }
+
+            if (TriggeredSubworldTravel)
+            {
+                if (SubworldSystem.AnyActive<Macrocosm>())
+                {
+                    LoadingTitleSequence.StartSequence(noTitle: HasVisitedSubworld(MacrocosmSubworld.CurrentMacrocosmID) && !MacrocosmConfig.Instance.AlwaysDisplayTitleScreens);
+                    visitedSubworlds.Add(MacrocosmSubworld.CurrentMacrocosmID);
+                }
+                else
+                {
+                    LoadingTitleSequence.StartSequence(noTitle: !MacrocosmConfig.Instance.AlwaysDisplayTitleScreens);
+                }
+            }      
         }
 
         public override bool CanConsumeAmmo(Item weapon, Item ammo)
@@ -154,7 +162,7 @@ namespace Macrocosm.Content.Players
                     if (SpaceProtection == SpaceProtection.None)
                         Player.AddBuff(BuffType<Depressurized>(), 2);
                     //if (protectTier <= SpaceProtection.Tier1)
-                    //Player.AddBuff(BuffTpye<Irradiated>(), 2);
+                    //Player.AddBuff(BuffType<Irradiated>(), 2);
                 }
                 //else if (SubworldSystem.IsActive<Mars>())
             }

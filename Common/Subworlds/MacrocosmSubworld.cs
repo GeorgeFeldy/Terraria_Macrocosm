@@ -37,16 +37,16 @@ namespace Macrocosm.Common.Subworlds
 
         /// <summary> Determine the size of this subworld </summary>
         /// <param name="earthWorldSize"> The Earth's world size </param>
-        public virtual WorldSize GetWorldSize(WorldSize earthWorldSize)
+        public virtual WorldSize SetSubworldSize(WorldSize earthWorldSize)
         {
             return earthWorldSize;
         }
 
         /// <summary> The width is determined in ReadCopiedMainWorldData using GetWorldSize </summary>
-        public sealed override int Width => GetWorldSize(Earth.WorldSize).Width;
+        public sealed override int Width => SetSubworldSize(Earth.WorldSize).Width;
 
         /// <summary> The height is determined in ReadCopiedMainWorldData using GetWorldSize </summary>
-        public sealed override int Height => GetWorldSize(Earth.WorldSize).Height;
+        public sealed override int Height => SetSubworldSize(Earth.WorldSize).Height;
 
         /// <summary> Specifies the conditions for reaching this particular subworld </summary>
         public virtual ChecklistConditionCollection LaunchConditions { get; } = new();
@@ -59,6 +59,9 @@ namespace Macrocosm.Common.Subworlds
 
         /// <summary> The map background color for each depth layer (Surface, Underground, Cavern, Underworld) </summary>
         public virtual Dictionary<MapColorType, Color> MapColors { get; } = null;
+
+        public Guid MainWorldUniqueId { get; private set; }
+
 
         /// <summary> 
         /// Determines what <see cref="SubworldSystem.Exit"/> will do. 
@@ -78,7 +81,6 @@ namespace Macrocosm.Common.Subworlds
             }
         }
 
-        public Guid MainWorldUniqueId { get; private set; }
 
         public override void OnEnter()
         {
@@ -112,7 +114,6 @@ namespace Macrocosm.Common.Subworlds
 
         public override void OnLoad()
         {
-            MainWorldUniqueId = (Utility.GetFieldValue(typeof(SubworldSystem), "main") as WorldFileData).UniqueId;
         }
 
         private static void SaveData(TagCompound tag)
@@ -131,57 +132,56 @@ namespace Macrocosm.Common.Subworlds
             CustomizationStorage.LoadData(tag);
         }
 
-        TagCompound subworldDataTag;
-        TagCompound mainWorldDataTag;
         public override void CopySubworldData()
         {
-            subworldDataTag = new();
-
+            TagCompound subworldDataTag = new();
             SaveData(subworldDataTag);
-
-            // This is to ensure the data is properly transfered by SubLib code to subservers in MP 
-            SubworldSystem.CopyWorldData("Macrocosm:subworldDataTag", subworldDataTag);
+            Hacks.SubworldSystem_CopyWorldData("Macrocosm:subworldDataTag", subworldDataTag);
         }
 
         public override void ReadCopiedSubworldData()
         {
-            // The data is sent to a MP subserver as packets, and read here, as it doesn't exist in its memory otherwise
-            // For some reason, this read returns wrong data when travelling from a subworld to the main world,
-            //	in single player, possibly even in MP.
-            // For single player, using the local tag in memory instead, awaiting SubLib fix
-            if (Main.netMode != NetmodeID.SinglePlayer)
-                subworldDataTag = SubworldSystem.ReadCopiedWorldData<TagCompound>("Macrocosm:subworldDataTag");
-
-            // In SP they are read directly from the subworldDataCopyTag in memory
+            TagCompound subworldDataTag = SubworldSystem.ReadCopiedWorldData<TagCompound>("Macrocosm:subworldDataTag");
             LoadData(subworldDataTag);
         }
 
         public override void CopyMainWorldData()
         {
-            mainWorldDataTag = new();
-
+            TagCompound mainWorldDataTag = new();
             SaveData(mainWorldDataTag);
-
-            // Save Earth's world size for other subworlds to use 
-            mainWorldDataTag[nameof(Earth.WorldSize)] = Earth.WorldSize;
-
+            SaveEarthSpecificData(mainWorldDataTag);
             SubworldSystem.CopyWorldData("Macrocosm:mainWorldDataTag", mainWorldDataTag);
         }
 
         public override void ReadCopiedMainWorldData()
         {
-            if (Main.netMode != NetmodeID.SinglePlayer)
-                mainWorldDataTag = SubworldSystem.ReadCopiedWorldData<TagCompound>("Macrocosm:mainWorldDataTag");
-
+            TagCompound mainWorldDataTag = SubworldSystem.ReadCopiedWorldData<TagCompound>("Macrocosm:mainWorldDataTag");
             LoadData(mainWorldDataTag);
+            LoadEarthSpecificData(mainWorldDataTag);
+        }
+
+        private void SaveEarthSpecificData(TagCompound tag)
+        {
+            // Save the main world's UniqueId for subworlds to use
+            tag[nameof(MainWorldUniqueId)] = Main.ActiveWorldFileData.UniqueId.ToString();
+
+            // Save Earth's world size for other subworlds to use 
+            tag[nameof(Earth) + nameof(Earth.WorldSize)] = Earth.WorldSize;
+        }
+
+        private void LoadEarthSpecificData(TagCompound tag)
+        {
+            // Read the main world's UniqueId
+            if(tag.ContainsKey(nameof(MainWorldUniqueId)))
+                MainWorldUniqueId = new Guid(tag.GetString(nameof(MainWorldUniqueId)));
 
             // Read world size and apply it here. 
             // In SubLib maxTiles are assigned before the data is read.
-            // This is called before worldgen so it's safe to assign them here 
-            if (mainWorldDataTag.ContainsKey(nameof(Earth.WorldSize)))
+            // ReadCopiedMainWorldData is called before worldgen so it can be safely used there.
+            if (tag.ContainsKey(nameof(Earth) + nameof(Earth.WorldSize)))
             {
-                Earth.WorldSize = mainWorldDataTag.Get<WorldSize>(nameof(Earth.WorldSize));
-                WorldSize subworldSize = GetWorldSize(Earth.WorldSize);
+                Earth.WorldSize = tag.Get<WorldSize>(nameof(Earth) + nameof(Earth.WorldSize));
+                WorldSize subworldSize = SetSubworldSize(Earth.WorldSize);
                 Main.maxTilesX = subworldSize.Width;
                 Main.maxTilesY = subworldSize.Height;
             }

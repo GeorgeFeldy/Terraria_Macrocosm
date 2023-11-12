@@ -214,7 +214,7 @@ namespace Macrocosm.Content.Rockets
             CurrentWorld = MacrocosmSubworld.CurrentID;
             Inventory = new(DefaultInventorySize, this);
 
-            if (Main.netMode != NetmodeID.SinglePlayer)
+            if (Main.netMode == NetmodeID.Server)
             {
                 NetSync();
                 Inventory.SyncEverything();
@@ -564,6 +564,7 @@ namespace Macrocosm.Content.Rockets
             if (AnyEmbarkedPlayers(out int id) && !TryFindingCommander(out _))
             {
                 GetRocketPlayer(id).IsCommander = true;
+                NetMessage.SendData(MessageID.SyncPlayer, number: id);
             }
         }
 

@@ -1,6 +1,7 @@
 using Macrocosm.Common.DataStructures;
 using Macrocosm.Common.Drawing;
 using Macrocosm.Common.Drawing.Sky;
+using Macrocosm.Common.Subworlds;
 using Macrocosm.Common.Utils;
 using Macrocosm.Content.LoadingScreens.WorldGen;
 using Macrocosm.Content.Rockets;
@@ -87,6 +88,8 @@ namespace Macrocosm.Content.LoadingScreens
             this.rocket = visualClone;
         }
 
+        public void ClearRocket() => rocket = null;
+
         /// <summary> Reset the loading screen specific variables. Called once before the <see cref="LoadingScreen"/> will be drawn. Useful when there's a persistent instance. </summary>
         protected virtual void Reset() { }
 
@@ -105,12 +108,10 @@ namespace Macrocosm.Content.LoadingScreens
             UpdateAnimation();
             Update();
 
+            // Make SubworldSystem.cache null if on game menu. 
+            // Remove once https://github.com/jjohnsnaill/SubworldLibrary/pull/35 is merged.
             if (Main.gameMenu && Main.menuMode == 0)
-            {
-                var flags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
-                FieldInfo field = typeof(SubworldSystem).GetField("cache", flags);
-                field.SetValue(null, null);
-            }
+                 MacrocosmSubworld.Hacks.SubworldSystem_NullCache();
         }
 
         /// <summary> Update the animation counter. Override for non-default behaviour </summary>

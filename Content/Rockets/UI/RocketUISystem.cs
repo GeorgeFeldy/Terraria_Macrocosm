@@ -67,8 +67,12 @@ namespace Macrocosm.Content.Rockets.UI
 
             UIRocketState = new RocketUIState();
             UIRocketState.Activate();
-            HideUI();
-            ShowUI(rocket);
+
+            if(Interface?.CurrentState != null)
+            {
+                HideUI();
+                ShowUI(rocket);
+            }        
         }
 
         private void OnConfigChanged(object sender, System.EventArgs e)
@@ -82,7 +86,7 @@ namespace Macrocosm.Content.Rockets.UI
 
         public void ShowUI(Rocket rocket)
         {
-            if (Main.netMode == NetmodeID.Server && Interface.CurrentState is not null)
+            if (Main.netMode == NetmodeID.Server || Interface.CurrentState is not null)
                 return;
 
             Main.playerInventory = true;
