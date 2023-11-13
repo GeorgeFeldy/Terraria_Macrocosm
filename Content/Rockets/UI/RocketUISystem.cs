@@ -54,7 +54,7 @@ namespace Macrocosm.Content.Rockets.UI
             if (Main.netMode == NetmodeID.Server)
                 return;
 
-            UIRocketState.Deactivate();
+            UIRocketState?.Deactivate();
             UIRocketState = null;
         }
 
@@ -99,7 +99,7 @@ namespace Macrocosm.Content.Rockets.UI
 
         public void HideUI()
         {
-            UIRocketState.OnHide();
+            UIRocketState?.OnHide();
 
             if (Main.netMode != NetmodeID.Server)
                 Interface?.SetState(null);

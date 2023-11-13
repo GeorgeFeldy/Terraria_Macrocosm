@@ -1,4 +1,5 @@
 ﻿using Macrocosm.Common.Config;
+using Macrocosm.Common.Netcode;
 using Macrocosm.Common.Subworlds;
 using Macrocosm.Common.Systems;
 using Macrocosm.Common.Utils;
@@ -11,9 +12,11 @@ using SubworldLibrary;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using Terraria;
 using Terraria.Graphics.Effects;
+using Terraria.ID;
 using Terraria.Localization;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
@@ -83,16 +86,16 @@ namespace Macrocosm.Content.Players
 
         /// <summary>
         /// The subworlds this player has visited.
-        /// Persistent. Not synced.
+        /// Persistent. Local to the player. Not synced.
         /// </summary>
         //TODO: sync this if needed
         private List<string> visitedSubworlds = new();
 
         /// <summary>
-        /// A dictionary of this player's last known subworld, by each Terraria main world file visited.
+        /// A dictionary of this player's last known subworld Id, by each Terraria main world file visited.
         /// Not synced.
         /// </summary>
-        private readonly Dictionary<Guid, string> lastSubworldNameByWorldUniqueId = new();
+        private readonly Dictionary<Guid, string> lastSubworldIdByWorldUniqueId = new();
 
         public override void ResetEffects()
         {
@@ -100,39 +103,9 @@ namespace Macrocosm.Content.Players
             RadNoiseIntensity = 0f;
             ChanceToNotConsumeAmmo = 0f;
             Player.buffImmune[BuffType<Depressurized>()] = false;
-            TriggeredSubworldTravel = false;
-        }
 
-        public bool HasVisitedSubworld(string subworldId) => visitedSubworlds.Contains(subworldId);
-
-        public void SetReturnSubworld(string subworldId)
-        {
-            Guid guid = SubworldSystem.AnyActive<Macrocosm>() ? MacrocosmSubworld.Current.MainWorldUniqueId : Main.ActiveWorldFileData.UniqueId;
-            lastSubworldNameByWorldUniqueId[guid] = subworldId;
-        }
-
-        public bool TryGetReturnSubworld(Guid worldUniqueId, out string subworldId) => lastSubworldNameByWorldUniqueId.TryGetValue(worldUniqueId, out subworldId);
-
-        public override void OnEnterWorld()
-        {
-            if (!SubworldSystem.AnyActive<Macrocosm>())
-            {
-                if (lastSubworldNameByWorldUniqueId.TryGetValue(Main.ActiveWorldFileData.UniqueId, out string lastSubworldId) && lastSubworldId is not "Earth")
-                    MacrocosmSubworld.Travel(lastSubworldId, trigger: false);
-            }
-
-            if (TriggeredSubworldTravel)
-            {
-                if (SubworldSystem.AnyActive<Macrocosm>())
-                {
-                    LoadingTitleSequence.StartSequence(noTitle: HasVisitedSubworld(MacrocosmSubworld.CurrentMacrocosmID) && !MacrocosmConfig.Instance.AlwaysDisplayTitleScreens);
-                    visitedSubworlds.Add(MacrocosmSubworld.CurrentMacrocosmID);
-                }
-                else
-                {
-                    LoadingTitleSequence.StartSequence(noTitle: !MacrocosmConfig.Instance.AlwaysDisplayTitleScreens);
-                }
-            }      
+            if (Main.ingameOptionsWindow)
+                TriggeredSubworldTravel = false;
         }
 
         public override bool CanConsumeAmmo(Item weapon, Item ammo)
@@ -217,6 +190,79 @@ namespace Macrocosm.Content.Players
             }
         }
 
+        public bool HasVisitedSubworld(string subworldId) => visitedSubworlds.Contains(subworldId);
+
+        public void SetReturnSubworld(string subworldId)
+        {
+            Guid guid = SubworldSystem.AnyActive<Macrocosm>() ? MacrocosmSubworld.Current.MainWorldUniqueId : Main.ActiveWorldFileData.UniqueId;
+            lastSubworldIdByWorldUniqueId[guid] = subworldId;
+        }
+
+        public bool TryGetReturnSubworld(Guid worldUniqueId, out string subworldId) => lastSubworldIdByWorldUniqueId.TryGetValue(worldUniqueId, out subworldId);
+
+        public override void OnEnterWorld()
+        {
+            if (Main.netMode == NetmodeID.SinglePlayer)
+            {
+                LastSubworldCheck(Main.ActiveWorldFileData.UniqueId);
+            }
+
+            if (TriggeredSubworldTravel)
+            {
+                if (SubworldSystem.AnyActive<Macrocosm>())
+                {
+                    LoadingTitleSequence.Start(noTitle: HasVisitedSubworld(MacrocosmSubworld.CurrentMacrocosmID) && !MacrocosmConfig.Instance.AlwaysDisplayTitleScreens);
+                    visitedSubworlds.Add(MacrocosmSubworld.CurrentMacrocosmID);
+                }
+                else
+                {
+                    LoadingTitleSequence.Start(noTitle: !MacrocosmConfig.Instance.AlwaysDisplayTitleScreens);
+                }
+            }
+        }
+
+        public static void LastSubworldCheck(BinaryReader reader, int whoAmI)
+        {
+            Guid mainWorldUniqueId = new(reader.ReadString());
+            Main.LocalPlayer.GetModPlayer<MacrocosmPlayer>().LastSubworldCheck(mainWorldUniqueId);
+        }
+
+        private void LastSubworldCheck(Guid mainWorldUniqueId)
+        {
+            if (!SubworldSystem.AnyActive<Macrocosm>() && !TriggeredSubworldTravel && lastSubworldIdByWorldUniqueId.TryGetValue(mainWorldUniqueId, out string lastSubworldId))
+            {
+                if (lastSubworldId is not "Earth")
+                    MacrocosmSubworld.Travel(lastSubworldId, trigger: false);
+            }
+        }
+
+        public override void CopyClientState(ModPlayer clientClone)
+        {
+            // TODO: copy data that has to be netsynced
+        }
+
+        public override void SendClientChanges(ModPlayer clientPlayer)
+        {
+            // TODO: SyncPlayer if netsynced data is different
+        }
+
+        public override void SyncPlayer(int toWho, int fromWho, bool newPlayer)
+        {
+            ModPacket packet = Mod.GetPacket();
+            packet.Write((byte)MessageType.SyncMacrocosmPlayer);
+            packet.Write((byte)Player.whoAmI);
+
+            // TODO: add netsynced data here 
+        }
+
+        public static void ReceiveSyncPlayer(BinaryReader reader, int whoAmI)
+        {
+            int playerWhoAmI = reader.ReadByte();
+            MacrocosmPlayer macrocosmPlayer = Main.player[playerWhoAmI].GetModPlayer<MacrocosmPlayer>();
+
+            // TODO: read netsynced data here
+        }
+
         public override void SaveData(TagCompound tag)
         {
             if (KnowsToUseZombieFinger)
@@ -226,10 +272,10 @@ namespace Macrocosm.Content.Players
                 tag[nameof(visitedSubworlds)] = visitedSubworlds;
 
             TagCompound lastSubworldsByWorld = new();
-            foreach (var kvp in lastSubworldNameByWorldUniqueId)
+            foreach (var kvp in lastSubworldIdByWorldUniqueId)
                 lastSubworldsByWorld[kvp.Key.ToString()] = kvp.Value;
 
-            tag[nameof(lastSubworldNameByWorldUniqueId)] = lastSubworldsByWorld;
+            tag[nameof(lastSubworldIdByWorldUniqueId)] = lastSubworldsByWorld;
         }
 
         public override void LoadData(TagCompound tag)
@@ -239,11 +285,11 @@ namespace Macrocosm.Content.Players
             if (tag.ContainsKey(nameof(visitedSubworlds)))
                 visitedSubworlds = tag.GetList<string>(nameof(visitedSubworlds)).ToList();
 
-            if (tag.ContainsKey(nameof(lastSubworldNameByWorldUniqueId)))
+            if (tag.ContainsKey(nameof(lastSubworldIdByWorldUniqueId)))
             {
-                TagCompound lastSubworldsByWorld = tag.GetCompound(nameof(lastSubworldNameByWorldUniqueId));
+                TagCompound lastSubworldsByWorld = tag.GetCompound(nameof(lastSubworldIdByWorldUniqueId));
                 foreach (var kvp in lastSubworldsByWorld)
-                    lastSubworldNameByWorldUniqueId[new Guid(kvp.Key)] = lastSubworldsByWorld.GetString(kvp.Key);
+                    lastSubworldIdByWorldUniqueId[new Guid(kvp.Key)] = lastSubworldsByWorld.GetString(kvp.Key);
             }
         }
     }

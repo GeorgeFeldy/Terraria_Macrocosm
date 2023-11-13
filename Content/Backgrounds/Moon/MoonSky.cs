@@ -93,10 +93,10 @@ namespace Macrocosm.Content.Backgrounds.Moon
 
         public void Unload() { }
 
-        // public override bool IsActive() => Active;
-
         public override void Activate(Vector2 position, params object[] args)
         {
+            SkyManager.Instance["Macrocosm:MoonSky"] = new MoonSky();
+
             starsDay.SpawnStars(100, 130, baseScale: 1.4f, twinkleFactor: 0.05f);
             starsNight.SpawnStars(600, 700, baseScale: 0.8f, twinkleFactor: 0.05f);
 

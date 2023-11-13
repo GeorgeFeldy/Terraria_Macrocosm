@@ -1,14 +1,17 @@
-﻿using Macrocosm.Content.Players;
+﻿using Macrocosm.Common.Netcode;
+using Macrocosm.Content.Players;
 using Macrocosm.Content.Subworlds;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SubworldLibrary;
+using System;
 using System.Collections.Generic;
 using Terraria;
 using Terraria.DataStructures;
 using Terraria.GameContent.Creative;
 using Terraria.GameContent.Events;
 using Terraria.GameContent.UI.Elements;
+using Terraria.ID;
 using Terraria.Localization;
 using Terraria.ModLoader;
 
@@ -24,8 +27,6 @@ namespace Macrocosm.Common.Subworlds
 
         public static int Seed => Main.ActiveWorldFileData.Seed;
         public static string SeedText => Main.ActiveWorldFileData.SeedText;
-
-        public Dictionary<string, string> LastSubworldsByWorld = new();
 
         public override void Load()
         {
@@ -180,6 +181,20 @@ namespace Macrocosm.Common.Subworlds
 
             if (bounds.Contains(Main.mouseX, Main.mouseY))
                 Main.instance.MouseText(Language.GetTextValue("Mods.Macrocosm.Subworlds." + subworldId + ".DisplayName"));
+        }
+
+        public override bool HijackSendData(int whoAmI, int msgType, int remoteClient, int ignoreClient, NetworkText text, int number, float number2, float number3, float number4, int number5, int number6, int number7)
+        {
+            if (Main.netMode == NetmodeID.Server && msgType == MessageID.FinishedConnectingToServer && remoteClient >= 0 && remoteClient < 255)
+            {
+                ModPacket packet = Mod.GetPacket();
+                packet.Write((byte)MessageType.LastSubworldCheck);
+                Guid guid = SubworldSystem.AnyActive<Macrocosm>() ? MacrocosmSubworld.Current.MainWorldUniqueId : Main.ActiveWorldFileData.UniqueId;
+                packet.Write(guid.ToString());
+                packet.Send(remoteClient);
+            }
+
+            return false;
         }
 
         public override void PreUpdateEntities()

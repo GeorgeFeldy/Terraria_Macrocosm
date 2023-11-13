@@ -213,12 +213,6 @@ namespace Macrocosm.Content.Rockets
         {
             CurrentWorld = MacrocosmSubworld.CurrentID;
             Inventory = new(DefaultInventorySize, this);
-
-            if (Main.netMode == NetmodeID.Server)
-            {
-                NetSync();
-                Inventory.SyncEverything();
-            }
         }
 
         /// <summary> Called when spawning into a new world </summary>

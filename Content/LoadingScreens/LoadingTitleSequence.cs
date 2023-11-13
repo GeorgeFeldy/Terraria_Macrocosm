@@ -63,7 +63,7 @@ namespace Macrocosm.Content.LoadingScreens
             };
         }
 
-        public static void StartSequence(bool noTitle)
+        public static void Start(bool noTitle)
         {
             timer = 0;
             titleFadeValue = 0f;

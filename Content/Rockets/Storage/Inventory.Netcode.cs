@@ -105,19 +105,23 @@ namespace Macrocosm.Content.Rockets.Storage
             Inventory inventory = owner.Inventory;
 
             // FIXME: inventory is sometimes already null ?!?!
-            int oldSize = inventory.Size;
             int newSize = reader.ReadUInt16();
 
-            if (oldSize != newSize)
-                inventory.OnResize(oldSize, newSize);
-
-            if (newSize <= 0)
-                owner.Inventory = null;
-
-            if (Main.netMode == NetmodeID.Server)
+            if (owner.HasInventory)
             {
-                inventory.SyncSize(ignoreClient: sender);
-            }
+                int oldSize = inventory.Size;
+
+                if (oldSize != newSize)
+                    inventory.OnResize(oldSize, newSize);
+
+                if (newSize <= 0)
+                    owner.Inventory = null;
+
+                if (Main.netMode == NetmodeID.Server)
+                {
+                    inventory.SyncSize(ignoreClient: sender);
+                }
+            }   
         }
 
         public void SyncItem(Item item, int toClient = -1, int ignoreClient = -1) => SyncItem(Array.IndexOf(items, item), toClient, ignoreClient);

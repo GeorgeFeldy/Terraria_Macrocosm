@@ -9,6 +9,7 @@ using System.Reflection;
 using Terraria;
 using Terraria.ID;
 using Terraria.IO;
+using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
 
 namespace Macrocosm.Common.Subworlds
@@ -36,19 +37,16 @@ namespace Macrocosm.Common.Subworlds
         /// Use this for situations where we want other mods' subworlds to behave like Earth.
         /// </summary>
         public static string CurrentMacrocosmID => SubworldSystem.AnyActive<Macrocosm>() ? Current.Name : "Earth";
+        public static bool IsValidMacrocosmID(string id) => SubworldSystem.GetIndex(Macrocosm.Instance.Name + "/" + id) >= 0 || id is "Earth";
 
         /// <summary>
-        /// Get the current active subworld string ID, matching the subworld class name. 
-        /// If it's from another mod, not Macrocosm, returns the subworld name with the mod name prepended. 
+        /// Get the current active subworld string ID, matching the subworld class name with the mod name prepended. 
         /// Returns <c>Earth</c> if none active.
         /// Use this for situations where other mods' subworlds should behave differently from Earth (the main world).
         /// </summary>
-        public static string CurrentID =>
-            SubworldSystem.AnyActive() && !SubworldSystem.AnyActive<Macrocosm>() ?
-            SubworldSystem.Current.Mod.Name + ":" + SubworldSystem.Current.Name :
-            CurrentMacrocosmID;
+        public static string CurrentID => SubworldSystem.AnyActive() ? SubworldSystem.Current.Mod.Name + "/" + SubworldSystem.Current.Name : "Earth";
 
-        public static bool IsValidMacrocosmID(string id) => SubworldSystem.GetIndex(Macrocosm.Instance.Name + "/" + id) >= 0 || id is "Earth";
+        public static int CurrentIndex => SubworldSystem.AnyActive() ? SubworldSystem.GetIndex(CurrentID) : -1;
 
         // TODO: We could protect the original properties get them only via statics?
         public static double CurrentTimeRate => SubworldSystem.AnyActive<Macrocosm>() ? Current.TimeRate : Earth.TimeRate;
@@ -163,7 +161,12 @@ namespace Macrocosm.Common.Subworlds
 
                 if (data != null)
                      copiedData[key] = data;
-            }            
+            }   
+            
+            public static void SubworldSystem_SendToAllSubserversExcept(Mod mod, int ignoreSubserver, byte[] data)
+            {
+
+            }
         }
     }
 }
