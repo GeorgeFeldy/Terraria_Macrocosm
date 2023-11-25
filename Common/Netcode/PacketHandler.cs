@@ -15,6 +15,7 @@ namespace Macrocosm.Common.Netcode
     {
         SyncParticle,
         SyncRocketData,
+        SyncRocketCustomizationData,
         SyncLaunchPadData,
         SyncInventory,
         SyncRocketPlayer,

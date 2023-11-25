@@ -109,15 +109,12 @@ namespace Macrocosm.Content.Rockets
         /// <summary> The layer this rocket is drawn in </summary>
         public RocketDrawLayer DrawLayer = RocketDrawLayer.BeforeNPCs;
 
-        /// <summary> This rocket's engine module nameplate </summary>
-        public Nameplate Nameplate => EngineModule.Nameplate;
+		/// <summary> This rocket's nameplate </summary>
+		public Nameplate Nameplate { get; set; } = new();
 
-        /// <summary> The Rocket's name, if not set by the user, defaults to a localized "Rocket" name </summary>
-        public string DisplayName
-            => Nameplate.IsValid() ? AssignedName : Language.GetTextValue("Mods.Macrocosm.Common.Rocket");
-
-        /// <summary> The Rocket's name, set by the user </summary>
-        public string AssignedName => EngineModule.Nameplate.Text;
+		/// <summary> The Rocket's name, if not set by the user, defaults to a localized "Rocket" name </summary>
+		public string DisplayName
+			=> Nameplate.IsValid() ? Nameplate.Text : Language.GetTextValue("Mods.Macrocosm.Common.Rocket");
 
         /// <summary> Dictionary of all the rocket's modules by name, in their order found in ModuleNames </summary>
         public Dictionary<string, RocketModule> Modules = new();
@@ -153,18 +150,16 @@ namespace Macrocosm.Content.Rockets
         /// <summary> The landing sequence progress </summary>
         public float LandingProgress => Position.Y / (TargetLandingPosition.Y - Height + 16);
 
-        private bool forcedStationaryAppearance;
-        private bool forcedFlightAppearance;
+		private float worldExitSpeed;
 
-        private float worldExitSpeed;
-
-        /// <summary> Whether this rocket is forced in a stationary (i.e. landed) state, visually </summary>
-        public bool ForcedStationaryAppearance
-        {
-            get => forcedStationaryAppearance;
-            set
-            {
-                forcedStationaryAppearance = value;
+		private bool forcedStationaryAppearance;
+		/// <summary> Whether this rocket is forced in a stationary (i.e. landed) state, visually </summary>
+		public bool ForcedStationaryAppearance
+		{
+			get => forcedStationaryAppearance;
+			set
+			{
+				forcedStationaryAppearance = value;
 
                 if (value)
                     forcedFlightAppearance = false;
@@ -173,13 +168,14 @@ namespace Macrocosm.Content.Rockets
             }
         }
 
-        /// <summary> Whether this rocket is forced in a full flight state, visually </summary>
-        public bool ForcedFlightAppearance
-        {
-            get => forcedFlightAppearance;
-            set
-            {
-                forcedFlightAppearance = value;
+		private bool forcedFlightAppearance;
+		/// <summary> Whether this rocket is forced in a full flight state, visually </summary>
+		public bool ForcedFlightAppearance
+		{
+			get => forcedFlightAppearance;
+			set
+			{
+				forcedFlightAppearance = value;
 
                 if (value)
                     forcedStationaryAppearance = false;
@@ -241,13 +237,17 @@ namespace Macrocosm.Content.Rockets
             }
         }
 
+		/// <summary> Gets the RocketPlayer bound to the provided player ID </summary>
+		/// <param name="playerID"> The player ID </param>
+		private RocketPlayer GetRocketPlayer(int playerID) => Main.player[playerID].RocketPlayer();
 
-        /// <summary> Update the rocket </summary>
-        public void Update()
-        {
-            SetModuleRelativePositions();
-            Velocity = GetCollisionVelocity();
-            Position += Velocity;
+
+		/// <summary> Update the rocket </summary>
+		public void Update()
+		{
+			SetModuleRelativePositions();
+			Velocity = GetCollisionVelocity();
+			Position += Velocity;
 
             // Testing
             Fuel = 1000f;

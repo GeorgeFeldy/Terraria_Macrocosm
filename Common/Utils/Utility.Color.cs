@@ -17,14 +17,12 @@ namespace Macrocosm.Common.Utils
 
         #endregion
 
-
-
-        #region Hex format conversion
-        public static string GetHexText(this Color color) => "#" + color.Hex3().ToUpper();
-        public static bool TryGetColorFromHex(string hexString, out Color color)
-        {
-            if (hexString.StartsWith("#"))
-                hexString = hexString[1..];
+		#region Hex format conversion
+		public static string GetHex(this Color color) => "#" + color.Hex3().ToUpper();
+		public static bool TryGetColorFromHex(string hexString, out Color color)
+		{
+			if (hexString.StartsWith("#"))
+				hexString = hexString[1..];
 
             if (hexString.Length <= 6 && uint.TryParse(hexString, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out var result))
             {
