@@ -45,6 +45,9 @@ namespace Macrocosm.Content.Rockets.Storage
 
         public void SyncEverything(int toClient = -1, int ignoreClient = -1)
         {
+            if (Main.netMode == NetmodeID.SinglePlayer)
+                return;
+
             ModPacket packet = Macrocosm.Instance.GetPacket();
 
             packet.Write((byte)MessageType.SyncInventory);
@@ -88,6 +91,9 @@ namespace Macrocosm.Content.Rockets.Storage
 
         public void SyncSize(int toClient = -1, int ignoreClient = -1)
         {
+            if (Main.netMode == NetmodeID.SinglePlayer)
+                return;
+
             ModPacket packet = Macrocosm.Instance.GetPacket();
 
             packet.Write((byte)MessageType.SyncInventory);
@@ -128,6 +134,9 @@ namespace Macrocosm.Content.Rockets.Storage
 
         public void SyncItem(int index, int toClient = -1, int ignoreClient = -1)
         {
+            if (Main.netMode == NetmodeID.SinglePlayer)
+                return;
+
             if (index < 0 || index > MaxInventorySize)
                 return;
 
@@ -145,6 +154,9 @@ namespace Macrocosm.Content.Rockets.Storage
 
         public void SyncInteraction(int toClient = -1, int ignoreClient = -1)
         {
+            if (Main.netMode == NetmodeID.SinglePlayer)
+                return;
+
             ModPacket packet = Macrocosm.Instance.GetPacket();
 
             packet.Write((byte)MessageType.SyncInventory);

@@ -237,11 +237,6 @@ namespace Macrocosm.Content.Rockets
             }
         }
 
-		/// <summary> Gets the RocketPlayer bound to the provided player ID </summary>
-		/// <param name="playerID"> The player ID </param>
-		private RocketPlayer GetRocketPlayer(int playerID) => Main.player[playerID].RocketPlayer();
-
-
 		/// <summary> Update the rocket </summary>
 		public void Update()
 		{

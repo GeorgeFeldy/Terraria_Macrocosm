@@ -22,13 +22,13 @@ namespace Macrocosm.Content.Rockets
         {
             Nameplate.Text = source.Nameplate.Text;
             Nameplate.TextColor = source.Nameplate.TextColor;
-            Nameplate.HorizontalAlignment = source.Nameplate.HorizontalAlignment;
-            Nameplate.VerticalAlignment = source.Nameplate.VerticalAlignment;
+            Nameplate.HAlign = source.Nameplate.HAlign;
+            Nameplate.VAlign = source.Nameplate.VAlign;
 
             foreach (var moduleName in ModuleNames)
             {
                 //Modules[moduleName].Detail = dummy.Modules[moduleName].Detail ;
-                Modules[moduleName].Pattern = dummy.Modules[moduleName].Pattern;
+                Modules[moduleName].Pattern = source.Modules[moduleName].Pattern;
             }
 
             SendCustomizationData();
